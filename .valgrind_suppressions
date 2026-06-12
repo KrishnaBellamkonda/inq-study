@@ -1,0 +1,17 @@
+{
+   MPICH
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:*libmpich.so.*
+}
+
+{
+   HWLOC
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:*libhwloc.so.*
+}
+
+

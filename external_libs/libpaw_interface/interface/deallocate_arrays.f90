@@ -1,0 +1,30 @@
+subroutine deallocate_arrays
+    use libpaw_mod
+
+    if (allocated(zion))                deallocate(zion)
+    if (allocated(znucl))               deallocate(znucl)
+    if (allocated(nattyp))              deallocate(nattyp)
+    if (allocated(lexexch))             deallocate(lexexch)
+    if (allocated(l_size_atm))          deallocate(l_size_atm)
+    if (allocated(lpawu))               deallocate(lpawu)
+    if (allocated(pawrad))              deallocate(pawrad)
+    if (allocated(pawtab))              deallocate(pawtab)
+    if (allocated(epsatm))              deallocate(epsatm)
+    if (allocated(pawfgrtab))           deallocate(pawfgrtab)
+    if (allocated(paw_ij))              deallocate(paw_ij)
+    if (allocated(paw_an))              deallocate(paw_an)
+    if (allocated(pawrhoij))            deallocate(pawrhoij)
+    if (allocated(ichan_array_read))    deallocate(ichan_array_read)
+    if (allocated(l_array_read))        deallocate(l_array_read)
+    if (allocated(atindx1))             deallocate(atindx1)
+    if (allocated(atindx))              deallocate(atindx)
+    if (allocated(qgrid_ff))            deallocate(qgrid_ff)
+    if (allocated(qgrid_vl))            deallocate(qgrid_vl)
+    if (allocated(ffspl))               deallocate(ffspl)
+    if (allocated(vlspl))               deallocate(vlspl)
+    if (allocated(fftn3_distrib))       deallocate(fftn3_distrib)
+    if (allocated(ffti3_local))         deallocate(ffti3_local)
+    if (allocated(fftn2_distrib))       deallocate(fftn2_distrib)
+    if (allocated(ffti2_local))         deallocate(ffti2_local)
+
+end subroutine

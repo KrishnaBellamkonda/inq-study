@@ -1,0 +1,116 @@
+image: debian:stable
+
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NVIDIA_DISABLE_REQUIRE: 1  # disable nvidia driver check
+
+arm-gnu:
+  stage: build
+  image: arm64v8/debian:stable
+  interruptible: false
+  allow_failure: false
+  tags:
+    - linux_arm
+  script:
+    - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake g++ git make libgsl-dev libboost-math-dev
+    - g++ --version
+    - mkdir build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake --build .
+    - ctest --output-on-failure
+
+x86-gnu:
+  stage: build
+  image: debian:trixie
+  interruptible: false
+  allow_failure: false
+  tags:
+    - linux_x86
+  script:
+    - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake g++ git make libgsl-dev libboost-math-dev
+    - g++ --version
+    - mkdir build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake --build .
+    - ctest --output-on-failure
+    - ./benchmark
+
+x86-gnu-noboost:
+  stage: build
+  image: debian:trixie
+  interruptible: false
+  allow_failure: false
+  tags:
+    - linux_x86
+  script:
+    - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake g++ git make libgsl-dev
+    - g++ --version
+    - mkdir build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake --build .
+    - ctest --output-on-failure
+    - ./benchmark
+
+x86-gnu-nogsl:
+  stage: build
+  image: debian:trixie
+  interruptible: false
+  allow_failure: false
+  tags:
+    - linux_x86
+  script:
+    - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake g++ git make libboost-math-dev
+    - g++ --version
+    - mkdir build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake --build .
+    - ctest --output-on-failure
+    - ./benchmark
+
+x86-gnu-noboost-nogsl:
+  stage: build
+  image: debian:trixie
+  interruptible: false
+  allow_failure: false
+  tags:
+    - linux_x86
+  script:
+    - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake g++ git make
+    - g++ --version
+    - mkdir build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - cmake --build .
+    - ctest --output-on-failure
+    - ./benchmark
+
+x86-clang-nosph_legendre:
+    stage: build
+    image: debian:bookworm
+    tags:
+        - linux_x86
+    script:
+        - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake clang git make libgsl-dev libboost-math-dev
+        - clang --version
+        - mkdir build && cd build
+        - CXXFLAGS="-O3 -pipe -Wall -Werror -Wno-error=deprecated-declarations"
+        - CXX=clang++ CC=clang cmake .. -DCMAKE_BUILD_TYPE=Release
+        - cmake --build .
+        - ctest --output-on-failure
+
+x86-clang:
+    stage: build
+    image: debian:trixie
+    tags:
+        - linux_x86
+    script:
+        - apt-get -qq update && apt-get -qq install --no-install-recommends -y --quiet ca-certificates cmake clang git make libgsl-dev libboost-math-dev
+        - clang --version
+        - mkdir build && cd build
+        - CXXFLAGS="-O3 -pipe -Wall -Werror -Wno-error=deprecated-declarations"
+        - CXX=clang++ CC=clang cmake .. -DCMAKE_BUILD_TYPE=Release
+        - cmake --build .
+        - ctest --output-on-failure

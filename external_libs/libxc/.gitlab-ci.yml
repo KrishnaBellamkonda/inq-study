@@ -1,0 +1,103 @@
+# Copyright (C) 2019-2021 Xavier Andrade, Alfredo A. Correa
+
+image: debian:stable-backports
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+gcc:
+    stage: build
+    script:
+      - time apt update -qq
+      - time apt install --no-install-recommends -y -qq autoconf automake make gcc gfortran libtool bzip2 python3 python3-pybtex
+      - autoreconf -i
+      - mkdir build/
+      - cd build/
+      - export CC=gcc
+      - export CFLAGS="-O3 -pipe -Wall"
+      - ../configure --prefix=$HOME
+      - make
+      - make check
+      - make install
+
+g++:
+    stage: build
+    script:
+      - time apt update -qq
+      - time apt install --no-install-recommends -y -qq autoconf automake make gcc g++ gfortran libtool bzip2 python3 python3-pybtex
+      - autoreconf -i
+      - mkdir build/
+      - cd build/
+      - export CFLAGS="-O3 -pipe -Wall"
+      - export CC=g++
+      - ../configure --prefix=$HOME
+      - make
+      - make check
+      - make install
+
+
+clang++:
+    stage: build
+    script:
+      - time apt update -qq
+      - time apt install --no-install-recommends -y -qq autoconf automake make clang gfortran libtool bzip2 python3 python3-pybtex
+      - autoreconf -i
+      - mkdir build/
+      - cd build/
+      - export CFLAGS="-O3 -pipe -Wall -Wno-deprecated"
+      - export CC=clang++
+      - ../configure --prefix=$HOME
+      - make
+      - make check
+      - make install
+
+nvcc_nocuda:
+    image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+    stage: build
+    artifacts:
+        paths:
+          - build/testsuite/test-suite.log
+    script:
+      - apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+      - apt update -qq
+      - DEBIAN_FRONTEND="noninteractive" apt install --no-install-recommends -y -qq autoconf automake make gcc gfortran libtool bzip2 python3 python3-pybtex
+      - autoreconf -i
+      - mkdir build/
+      - cd build/
+      - export CC="nvcc -x cu"
+      - export CFLAGS="-g -O3 --std=c++03 --compiler-options -g,-Wall"
+      - export CCLD="nvcc"
+      - ../configure --prefix=$HOME
+      - make
+      - make install
+
+#can't run since the gitlab machines don't have gpus
+cuda_norun:
+    image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+    stage: build
+    script:
+      - apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+      - apt update -qq
+      - DEBIAN_FRONTEND="noninteractive" apt install --no-install-recommends -y -qq autoconf automake make gcc gfortran libtool bzip2 python3 python3-pybtex
+      - autoreconf -i
+      - mkdir build/
+      - cd build/
+      - export CC="nvcc -x cu"
+      - export CFLAGS="-g -O3 --std=c++03 --compiler-options -g,-Wall"
+      - export CCLD="nvcc"
+      - ../configure --enable-cuda --prefix=$HOME
+      - make
+      - make install
+
+#can't run since the gitlab machines don't have gpus
+cuda_cmake_norun:
+    image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+    stage: build
+    script:
+      - apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+      - apt update -qq
+      - DEBIAN_FRONTEND="noninteractive" apt install --no-install-recommends -y -qq autoconf automake make gcc gfortran libtool bzip2 cmake python3 python3-pybtex
+      - mkdir build
+      - cd build
+      - cmake -DENABLE_CUDA=ON ../
+      - make

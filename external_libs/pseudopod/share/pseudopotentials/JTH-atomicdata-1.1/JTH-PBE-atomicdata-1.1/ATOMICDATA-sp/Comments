@@ -1,0 +1,8 @@
+# Comments to the JTHv1.1 table (08/03/2018)
+ As / As.LDA_PW-JTH.xml / GGA_PBE   / [Ar 3d10] 4s2 4p3 / rpaw=2.1 a.u. / Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ In / In.LDA_PW-JTH.xml / GGA_PBE   / [Kr 4d10] 5s2 5p1 / rpaw=2.9 a.u. /   Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ Sn / Sn.LDA_PW-JTH.xml / GGA_PBE   / [Kr 4d10] 5s2 5p2 / rpaw=2.7 a.u. /   Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ Sb / Sb.LDA_PW-JTH.xml / GGA_PBE   / [Kr 4d10] 5s2 5p3 / rpaw=2.3 a.u. /  Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ Tl / Tl.LDA_PW-JTH.xml / GGA_PBE   / [Xe 5d10 4f14] 6s2 6p1 / rpaw=2.9 a.u.  / Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ Pb / Pb.LDA_PW-JTH.xml / GGA_PBE   / [Xe 5d10 4f14] 6s2 6p2 / rpaw=2.9 a.u.  / Generator: atompaw 4.0.0.12 (input file included in the dataset itself)
+ Bi / Bi.LDA_PW-JTH.xml / GGA_PBE   / [Xe 5d10 4f14] 6s2 6p3 / rpaw=2.9 a.u. / Generator: atompaw 4.0.0.12 (input file included in the dataset itself)

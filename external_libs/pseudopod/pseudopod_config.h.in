@@ -1,0 +1,13 @@
+#ifndef PSEUDOPOD__CONFIG
+#define PSEUDOPOD__CONFIG
+
+// Copyright (C) 2019-2023 Lawrence Livermore National Security, LLC., Xavier Andrade
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#define PSEUDOPOD_PREFIX_DIR "@CMAKE_INSTALL_PREFIX@"
+#define PSEUDOPOD_SHARE_DIR  "@CMAKE_INSTALL_PREFIX@/share/pseudopod"
+
+#endif

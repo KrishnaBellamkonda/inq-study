@@ -1,0 +1,22 @@
+#ifndef INQ__CONFIG
+#define INQ__CONFIG
+
+// Copyright (C) 2019-2023 Lawrence Livermore National Security, LLC., Xavier Andrade, Alfredo A. Correa
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#define inq_VERSION_MAJOR @inq_VERSION_MAJOR@
+#define inq_VERSION_MINOR @inq_VERSION_MINOR@
+
+#cmakedefine ENABLE_GPU @ENABLE_GPU@
+#cmakedefine ENABLE_CUDA @ENABLE_CUDA@
+#cmakedefine ENABLE_HIP @ENABLE_HIP@
+#cmakedefine HAVE_MPI_ISENDRECV_REPLACE @HAVE_MPI_ISENDRECV_REPLACE@
+#cmakedefine ENABLE_NCCL @ENABLE_NCCL@
+
+#define PREFIX_DIR "@CMAKE_INSTALL_PREFIX@"
+#define SHARE_DIR  "@CMAKE_INSTALL_PREFIX@/share/inq"
+
+#endif

@@ -1,0 +1,97 @@
+#ifndef PSEUDO_UPF_HPP
+#define PSEUDO_UPF_HPP
+
+// Copyright (C) 2019-2023 Lawrence Livermore National Security, LLC., Xavier Andrade
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <fstream>
+#include <vector>
+#include <cassert>
+#include <sstream>
+#include <iostream>
+#include <cmath>
+
+#include "anygrid.hpp"
+
+namespace pseudo {
+
+class upf : public pseudo::anygrid {
+
+public:
+
+  upf(bool uniform_grid):
+    pseudo::anygrid(uniform_grid){
+  }
+    
+  double d_ij(int l, int i, int j) const {
+    assert(l >= 0 && l <= lmax_);
+    assert(i >= 0 && i <= nchannels());
+    assert(j >= 0 && j <= nchannels());
+
+    return dij_[l*nchannels()*nchannels() + i*nchannels() + j];
+  }
+
+protected:
+
+  int llocal() const {
+    return llocal_;
+  }
+
+  int nchannels() const {
+    return nchannels_;
+  }
+    
+  double & d_ij(int l, int i, int j) {
+    assert(l >= 0 && l <= lmax_);
+    assert(i >= 0 && i <= nchannels());
+    assert(j >= 0 && j <= nchannels());
+
+    return dij_[l*nchannels()*nchannels() + i*nchannels() + j];
+  }
+    
+  void extrapolate_first_point(std::vector<double> & function_) const{
+
+    assert(function_.size() >= 4);
+    assert(grid_.size() >= 4);
+      
+    double x1 = grid_[1];
+    double x2 = grid_[2];
+    double x3 = grid_[3];
+    double f1 = function_[1];
+    double f2 = function_[2];
+    double f3 = function_[3];
+
+
+    // obtained from:
+    // http://www.wolframalpha.com/input/?i=solve+%7Bb*x1%5E2+%2B+c*x1+%2B+d+%3D%3D+f1,++b*x2%5E2+%2B+c*x2+%2B+d+%3D%3D+f2,+b*x3%5E2+%2B+c*x3+%2B+d+%3D%3D+f3+%7D++for+b,+c,+d
+      
+    function_[0] = f1*x2*x3*(x2 - x3) + f2*x1*x3*(x3 - x1) + f3*x1*x2*(x1 - x2);
+    function_[0] /= (x1 - x2)*(x1 - x3)*(x2 - x3);
+
+  }
+
+  std::vector<double> dij_;
+  int llocal_;
+  int start_point_;
+  int nchannels_;
+
+    
+};
+
+}
+
+#endif
+
+#ifdef INQ_FORMATS_UPF_UNIT_TEST
+#undef INQ_FORMATS_UPF_UNIT_TEST
+
+#include <catch2/catch_all.hpp>
+
+TEST_CASE(INQ_TEST_FILE, INQ_TEST_TAG) {
+	using namespace Catch::literals;
+	using Catch::Approx;
+}
+#endif

@@ -1,0 +1,26 @@
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "@PROJECT_VERSION@"
+
+#ifdef HAVE_FORTRAN
+#include "Libxc_MANGLE.h"
+#define FC_FUNC FC_FUNC_GLOBAL
+#define FC_FUNC_ FC_FUNC_GLOBAL_
+#endif
+
+#cmakedefine ENABLE_CUDA @ENABLE_CUDA@
+#ifdef ENABLE_CUDA
+#define HAVE_CUDA 1
+#endif
+
+#cmakedefine ENABLE_HIP @ENABLE_HIP@
+#ifdef ENABLE_HIP
+#define HAVE_HIP 1
+#endif
+
+#cmakedefine ENABLE_GPU @ENABLE_GPU@
+#ifdef ENABLE_GPU
+#define HAVE_GPU 1
+#endif
+
+#include <stdio.h>
+
