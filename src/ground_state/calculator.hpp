@@ -9,6 +9,33 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// ============================================================================
+// PROPOSAL (muon per-orbital mass fork — 2026-07-06)
+//
+// WHY THIS FILE CHANGES (only for the ALL-MUON / band-structure case):
+//   This is the SCF ground-state driver. It builds the ks_hamiltonian that the
+//   eigensolver applies to converge the GS. For a muon (heavy) projectile injected
+//   at RT into an ELECTRON jellium, the GS is pure electron jellium and this file
+//   needs NO change (default all-ones mass). But for an ALL-MUON jellium — or the
+//   mass-tuned band-structure campaign — the BATH itself carries muon mass, so the
+//   GS must be solved with -1/(2 m_mu)∇². That means the mass must reach the
+//   Hamiltonian built here (:97).
+//
+// HOW IT FITS THE BROADER SCOPE:
+//   Same `inverse_mass_` channel as everywhere else. Passing electrons.inverse_mass()
+//   here makes the SCF converge the muon-jellium (or heavy-band) ground state. The
+//   arg defaults to all-ones, so every existing GS run is bit-for-bit unchanged.
+//
+// HOW THE WORKFLOW IS AFFECTED:
+//   Enables "start with an all-muon jellium": the loaded/converged GS is now a
+//   genuine muon HEG, which the RT muon run is then injected into / propagated from.
+//
+// NOTE: ground_state/initial_guess.hpp does NOT need this — it builds a
+//   ks_hamiltonian only to get the (mass-independent) overlap operator for
+//   orthogonalisation; the SCF here re-converges from that guess with the correct
+//   mass regardless. Leave initial_guess on the all-ones default.
+// ============================================================================
+
 #include <cfloat>
 
 #include <systems/ions.hpp>
@@ -96,6 +123,11 @@ public:
 		 sc_(inter, electrons, pert),
 		 ham_(electrons.states_basis(), electrons.states(), electrons.atomic_pot(), ions_)
 	{
+		// Muon mass fork (2026-07-06): opt the SCF Hamiltonian into the per-state
+		// mass so an all-muon jellium / band-structure GS is converged with the
+		// right kinetic operator. No-op unless some inverse_mass entry != 1 ⇒
+		// ordinary electron ground states are bit-for-bit unchanged. Gamma ⇒ kpin 0.
+		ham_.set_inverse_mass(electrons.inverse_mass()[0]);
 	}
 
 	results operator()(systems::electrons & electrons){

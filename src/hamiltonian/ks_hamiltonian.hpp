@@ -9,6 +9,41 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// ============================================================================
+// PROPOSAL (muon per-orbital mass fork — 2026-07-06)
+//
+// WHY THIS FILE CHANGES:
+//   This is the ROUTER between the per-state inverse mass (owned by `electrons`)
+//   and the kinetic operator (`operations/laplacian.hpp`). Three call sites hard-
+//   code the scalar -0.5 (= -hbar^2/2m, m_e=1):
+//     :202  operations::laplacian(phi_fs, -0.5, ...)          (real-space apply)
+//     :235  operations::laplacian_add(phi, hphi, -0.5, ...)   (fourier apply)
+//     :245  operations::laplacian_expectation_value(phi, -0.5,...) (ENERGY ledger)
+//   Each must instead pass a PER-STATE factor array = -0.5 * inverse_mass[ist],
+//   partition-aligned to `phi`. Fixing :245 keeps E_total consistent for free
+//   (energy.hpp weights this by occupations externally).
+//
+// HOW IT FITS THE BROADER SCOPE:
+//   Holds the per-state inverse mass as a member, set at construction from
+//   electrons.inverse_mass(). Constructor argument DEFAULTS to "all ones" so the
+//   ground_state construction sites (calculator.hpp, initial_guess.hpp) need NO
+//   change and GS stays bit-for-bit identical — only real_time/propagate.hpp
+//   opts in by passing the real electrons.inverse_mass().
+//
+// HOW THE WORKFLOW IS AFFECTED:
+//   None at the user level; this is pure engine plumbing behind `inq-run`.
+//
+// THOUGHTS:
+//	 In this file, the KS hamiltonian is constructured and implemented. I want to refresh my
+//   memory of how the operators are applied here. Is the kinetic energy operator, the laplacian,
+//   applied in real space (laplican function), and the coulomb potential energy applied in fourier space (laplican_add function)? Also, would it be
+//   right if I said that, we are adding an additional parameter the individual functions that specified their mass? I don't quite understand, how the ks_hamiltonian
+//   file links to the laplcaian and the electrons hpp files. i want to understand, which file calls upon which file starting from the run.cpp file. I want a chain of logic
+//   through calls of specific functions in specific files to be put to be for me to understand this better.
+//
+//
+// ============================================================================
+
 #include <basis/field.hpp>
 #include <multi/adaptors/fftw.hpp>
 #include <hamiltonian/atomic_potential.hpp>
@@ -52,6 +87,11 @@ private:
 	states::ks_states states_;
 	std::vector<states::orbital_set<basis::real_space, complex>> ace_orbitals_;
 	states::index ace_orbital_index_;
+	// Per-state kinetic prefactor (= -0.5 * inverse_mass[ist]), local + partition-
+	// aligned to phi (muon mass fork, 2026-07-06). EMPTY by default → the kinetic
+	// operator uses the ORIGINAL scalar -0.5 path (bit-for-bit identical to the
+	// unforked engine). Populated via set_inverse_mass() ONLY when some mass != 1.
+	gpu::array<double, 1> kinetic_factor_;
 
 #ifdef ENABLE_CUDA
 public:
@@ -92,7 +132,9 @@ public:
 		
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-		
+
+	// Constructor is UNCHANGED (every existing caller is source-compatible). The
+	// per-state mass is opted into afterwards via set_inverse_mass() — see below.
 	ks_hamiltonian(const basis::real_space & basis, states::ks_states const & states, atomic_potential const & pot, systems::ions const & ions):
 		vxc_(basis, states.num_density_components()),
 		scalar_potential_(basis, states.num_density_components()),
@@ -101,6 +143,27 @@ public:
 	{
 		scalar_potential_.fill(0.0);
 		update_projectors(basis, pot, ions);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Opt into a per-state mass (muon mass fork, 2026-07-06). `im` is the LOCAL
+	// per-state inverse-mass array for this kpin (e.g. electrons.inverse_mass()[0]).
+	// If every entry is exactly 1.0, kinetic_factor_ is left EMPTY so the kinetic
+	// operator keeps the original scalar -0.5 path (bit-for-bit unchanged). Only
+	// when some mass != 1 do we build kinetic_factor_[ist] = -0.5 * im[ist].
+	template <class InvMassArray>
+	void set_inverse_mass(InvMassArray const & im){
+		CALI_CXX_MARK_FUNCTION;
+		auto const dev = gpu::run(gpu::reduce(im.size()), 0.0,
+			[imit = begin(im)] GPU_LAMBDA (auto i){ return fabs(imit[i] - 1.0); });
+		if(dev == 0.0){                 // trivial (all electrons) → keep scalar path
+			kinetic_factor_ = gpu::array<double, 1>{};
+			return;
+		}
+		kinetic_factor_ = gpu::array<double, 1>(im.size());
+		gpu::run(im.size(),
+			[kf = begin(kinetic_factor_), imit = begin(im)] GPU_LAMBDA (auto i){ kf[i] = -0.5*imit[i]; });
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +262,12 @@ public:
 
 		auto phi_fs = operations::transform::to_fourier(phi);
 		
-		auto hphi_fs = operations::laplacian(phi_fs, -0.5, -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_));
+		// Kinetic term. Empty kinetic_factor_ → original scalar -0.5 (electrons).
+		// Non-empty → per-state factor: electrons keep -0.5, the muon slot -0.5/m_mu.
+		auto const gradcoeff = -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_);
+		auto hphi_fs = (kinetic_factor_.size() == 0)
+			? operations::laplacian(phi_fs, -0.5, gradcoeff)
+			: operations::laplacian_states(phi_fs, kinetic_factor_, gradcoeff);
 			
 		auto hphi = operations::transform::to_real(hphi_fs);
 
@@ -232,7 +300,10 @@ public:
 			
 		auto hphi = operations::transform::to_fourier(hphi_rs);
 
-		operations::laplacian_add(phi, hphi, -0.5, -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_));
+		// Kinetic term (fourier-space entry point) — same guard as the real-space apply.
+		auto const gradcoeff = -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_);
+		if(kinetic_factor_.size() == 0) operations::laplacian_add(phi, hphi, -0.5, gradcoeff);
+		else                            operations::laplacian_add_states(phi, hphi, kinetic_factor_, gradcoeff);
 
 		return hphi;
 	}
@@ -242,7 +313,13 @@ public:
 	auto kinetic_expectation_value(states::orbital_set<basis::fourier_space, complex> const & phi) const {
 		CALI_CXX_MARK_FUNCTION;
 
-		return operations::laplacian_expectation_value(phi, -0.5, -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_));
+		// CRITICAL for the energy ledger — SAME guard/factor as the apply kernels.
+		// energy.hpp sums this (occupation-weighted) into E_kinetic; a mismatch vs
+		// the apply kernels would silently corrupt E_total for the muon.
+		auto const gradcoeff = -2.0*phi.basis().cell().to_contravariant(phi.kpoint() + uniform_vector_potential_);
+		return (kinetic_factor_.size() == 0)
+			? operations::laplacian_expectation_value(phi, -0.5, gradcoeff)
+			: operations::laplacian_expectation_value_states(phi, kinetic_factor_, gradcoeff);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////

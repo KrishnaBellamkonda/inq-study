@@ -9,6 +9,37 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// ============================================================================
+// PROPOSAL (muon per-orbital mass fork — 2026-07-06)
+// WHY THIS FILE CHANGES:
+//   `electrons` is the persistent owner of all per-state data (it already holds
+//   `occupations_[kpin][state]`). The muon quantum-WP campaign needs a per-state
+//   INVERSE MASS so that ONE orbital (the injected wavepacket, last extra state)
+//   propagates with kinetic operator -1/(2*m_mu) while every electron orbital
+//   keeps -1/2 (m_e = 1 a.u.). This is the natural, idiomatic home for that
+//   knob: it mirrors `occupations_` exactly (same shape, lifetime, partition),
+//   so it rides machinery that already exists.
+//
+// HOW IT FITS THE BROADER SCOPE:
+//   This is the DATA/INTERFACE layer of the fork. The value set here is READ by
+//   `hamiltonian/ks_hamiltonian.hpp` and applied by `operations/laplacian.hpp`.
+//   Default is 1.0 for every state, so ground state and every existing run stay
+//   bit-for-bit unchanged. Only the muon run.cpp writes a non-unit value.
+//
+// HOW THE WORKFLOW IS AFFECTED:
+//   run.cpp (consumer) does, right after WP injection:
+//       electrons.inverse_mass()[0][wp_idx] = 1.0 / M_MU;   // M_MU = 206.77
+//   Nothing else in the user workflow changes; classical-muon runs never touch
+//   this. See docs/campaigns/muon_projectile/inq_study_engine_notes.md.
+// 
+// MY THOUGHTS:  
+// If I understand this correctly, this file holds the tempalte for the electrons class.
+// It contains all of the default values required for the electrons properties, such as occupation
+//  number, spin etc. I wonder if this is for the total system electrons, or just individual orbtials. 
+// I think the way this works is that we define the total systems bulk electron properties, and the individual
+// orbtials get assigned on their own. Each orbital is planed in a electrons[kpin][local_state_index].
+// ============================================================================
+
 #include <stdexcept>
 
 #include <basis/field_set.hpp>
@@ -73,6 +104,10 @@ private:
 	kpin_type kpin_;
 	gpu::array<double, 2> eigenvalues_;
 	gpu::array<double, 2> occupations_;
+	// Per-state inverse mass (muon mass fork, 2026-07-06). Same [kpin][local_state]
+	// shape as occupations_. Default 1.0 (m_e) everywhere; a run.cpp overwrites the
+	// muon slot(s) with 1/m_mu. Read by ks_hamiltonian, applied in laplacian.
+	gpu::array<double, 2> inverse_mass_;
 	gpu::array<double, 1> kpin_weights_;
 	long max_local_set_size_;
 	long max_local_spinor_set_size_;
@@ -116,6 +151,15 @@ public:
 
 	auto & occupations() {
 		return occupations_;
+	}
+
+	// Per-state inverse mass accessors (muon mass fork). Mirror occupations().
+	auto & inverse_mass() const {
+		return inverse_mass_;
+	}
+
+	auto & inverse_mass() {
+		return inverse_mass_;
 	}
 
 	template <typename KptsType = input::kpoints::list>
@@ -187,6 +231,10 @@ public:
 		
 		eigenvalues_.reextent({static_cast<boost::multi::size_t>(kpin_.size()), max_local_spinor_set_size_});
 		occupations_.reextent({static_cast<boost::multi::size_t>(kpin_.size()), max_local_spinor_set_size_});
+		// Allocate the inverse mass to 1.0 alongside occupations_ (primary
+		// construction path). Default 1.0 ⇒ ordinary electrons everywhere. Use the
+		// value-constructor (multi's 2D scalar .fill() is not well-formed here).
+		inverse_mass_ = gpu::array<double, 2>(occupations_.extensions(), 1.0);
 
 		if(states_.num_electrons() == 0.0) throw std::runtime_error("inq error: the system does not have any electrons");
 		if(states_.num_electrons() <  0.0) throw std::runtime_error("inq error: the system has a negative number of electrons");
@@ -236,7 +284,13 @@ public:
 
 		eigenvalues_.reextent({static_cast<boost::multi::size_t>(kpin_.size()), max_local_spinor_set_size_});
 		occupations_.reextent({static_cast<boost::multi::size_t>(kpin_.size()), max_local_spinor_set_size_});
-		
+		// Mirror on the resize/rebalance path too (default 1.0). NOTE: this path
+		// rebalances occupations across a new decomposition but NOT inverse_mass_;
+		// re-setting to 1.0 is correct for all current uses (mass is set post-load
+		// in run.cpp, after any rebalancing). If mid-run mass must survive a
+		// rebalance, add a parallel::array_iterator copy like occupations_ above.
+		inverse_mass_ = gpu::array<double, 2>(occupations_.extensions(), 1.0);
+
 		for(unsigned ilot = 0; ilot < kpin_.size(); ilot++){
 
 			parallel::partition part(kpin_[ilot].spinor_set_size(), states_subcomm(old_el.full_comm_));

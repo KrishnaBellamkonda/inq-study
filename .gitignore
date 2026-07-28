@@ -1,3 +1,6 @@
 /build/
 /install/
 .understand-anything/
+
+# Out-of-source build trees (CPU/GPU)
+build-*/

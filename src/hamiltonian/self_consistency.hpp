@@ -173,7 +173,13 @@ public:
 		assert(total_density.basis() == vion_.basis());
 
 		//IONIC POTENTIAL
-		auto vscalar = vion_;
+		// vscalar carries the Hamiltonian's potential_type so that a COMPLEX absorbing
+		// potential (perturbations::absorbing, a CAP adding V += i*eta*sin^2) survives
+		// all the way to scalar_potential_add and reaches the orbitals. For a real
+		// (ground-state) Hamiltonian potential_type is double and this is bit-identical
+		// to the previous `auto vscalar = vion_`; for the complex real-time Hamiltonian
+		// it is complex. inq-study-only change — see docs/plans/absorbing-cap-engine.md.
+		basis::field<basis::real_space, typename HamiltonianType::potential_type> vscalar(vion_);
 
 		//Time-dependent perturbation
 		if(pert_.has_uniform_electric_field()){
@@ -188,7 +194,9 @@ public:
 
 		pert_.potential(time, vscalar);
 
-		energy.external(operations::integral_product(total_density, vscalar));
+		// real(): energy is a real observable; the CAP's imaginary part is an
+		// artificial boundary term and must not enter the reported energetics.
+		energy.external(inq::real(operations::integral_product(total_density, vscalar)));
 		
 		// Hartree
 		if(theory_.hartree_potential()){

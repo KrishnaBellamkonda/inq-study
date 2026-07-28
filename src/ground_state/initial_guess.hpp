@@ -30,7 +30,12 @@ void initial_guess(const systems::ions & ions, systems::electrons & electrons, s
 	for(auto & phi : electrons.kpin()) {
 		operations::randomize(phi, iphi + electrons.kpin_part().start());
 		if(electrons.atomic_pot().has_overlap()){
-			// In PAW the overlap S is fixed whereas in USPP S depends on the wavefunctions. 
+			// In PAW the overlap S is fixed whereas in USPP S depends on the wavefunctions.
+			// PROPOSAL NOTE (muon mass fork): NO CHANGE HERE. This ks_hamiltonian is
+			// built only to obtain ham.overlap_operator() for orthogonalising the
+			// random initial orbitals. The overlap operator does NOT involve the
+			// kinetic mass, and the SCF (calculator.hpp) re-converges from this guess
+			// with the correct mass anyway. Leave on the all-ones default.
 			ham.emplace(electrons.states_basis(), electrons.states(), electrons.atomic_pot(), ions);
 			hamiltonian::ks_hamiltonian<double> ham(electrons.states_basis(), electrons.states(), electrons.atomic_pot(), ions);
 			operations::orthogonalize(phi, ham.overlap_operator());

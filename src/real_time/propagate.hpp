@@ -8,6 +8,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+
+// MY THOUGHTS:
+// This file has the real time propagation code. We are going to pass the inverse mass parameter
+// to the propagate code through the pipeline, and ensure that the mass change persists through
+// the code.
+//
+//
+
 #include <systems/ions.hpp>
 #include <hamiltonian/self_consistency.hpp>
 #include <operations/overlap_diagonal.hpp>
@@ -61,6 +69,10 @@ void propagate(systems::ions & ions, systems::electrons & electrons, ProcessFunc
 		
 	hamiltonian::self_consistency sc(inter, electrons, pert, opts.ground_state_theory());
 	hamiltonian::ks_hamiltonian<complex> ham(electrons.states_basis(), electrons.states(), electrons.atomic_pot(), ions);
+	// Muon mass fork (2026-07-06): opt the RT Hamiltonian into the per-state mass.
+	// No-op (kinetic_factor_ stays empty) unless some inverse_mass entry != 1, so
+	// ordinary electron runs are bit-for-bit unchanged. Gamma-only ⇒ kpin 0.
+	ham.set_inverse_mass(electrons.inverse_mass()[0]);
 		hamiltonian::energy energy;
 
 		sc.update_ionic_fields(electrons.states_comm(), ions, electrons.atomic_pot());
