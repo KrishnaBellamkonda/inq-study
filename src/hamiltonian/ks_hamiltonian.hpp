@@ -33,15 +33,21 @@
 // HOW THE WORKFLOW IS AFFECTED:
 //   None at the user level; this is pure engine plumbing behind `inq-run`.
 //
-// THOUGHTS:
-//	 In this file, the KS hamiltonian is constructured and implemented. I want to refresh my
-//   memory of how the operators are applied here. Is the kinetic energy operator, the laplacian,
-//   applied in real space (laplican function), and the coulomb potential energy applied in fourier space (laplican_add function)? Also, would it be
-//   right if I said that, we are adding an additional parameter the individual functions that specified their mass? I don't quite understand, how the ks_hamiltonian
-//   file links to the laplcaian and the electrons hpp files. i want to understand, which file calls upon which file starting from the run.cpp file. I want a chain of logic
-//   through calls of specific functions in specific files to be put to be for me to understand this better.
+// DATAFLOW (per-state mass — the full call chain, starting from run.cpp):
+//   1. run.cpp                    electrons.inverse_mass()[0][wp_idx] = 1.0/M_MU   (set the knob)
+//   2. real_time/propagate.hpp    ham.set_inverse_mass(electrons.inverse_mass()[0])
+//   3. ks_hamiltonian::set_inverse_mass  -> stores kinetic_factor_[ist] = -0.5*im[ist]
+//                                           (left EMPTY when every mass == 1 -> scalar path)
+//   4. ks_hamiltonian apply / kinetic_expectation_value  branch on kinetic_factor_.size():
+//        empty -> operations::laplacian / laplacian_add / laplacian_expectation_value   (scalar -0.5)
+//        set   -> operations::laplacian_states / laplacian_add_states /
+//                 laplacian_expectation_value_states   (per-state factor; operations/laplacian.hpp)
+//   5. hamiltonian/energy.hpp sums the (occupation-weighted) kinetic expectation into E_total.
 //
-//
+//   Operator placement: the kinetic Laplacian is applied in FOURIER space (phi is
+//   transformed to reciprocal space first); the local/Hartree/xc potentials are
+//   applied in REAL space via scalar_potential_add. The mass fork touches only the
+//   kinetic (Laplacian) path.
 // ============================================================================
 
 #include <basis/field.hpp>

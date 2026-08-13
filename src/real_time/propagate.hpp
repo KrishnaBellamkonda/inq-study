@@ -8,13 +8,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-
-// MY THOUGHTS:
-// This file has the real time propagation code. We are going to pass the inverse mass parameter
-// to the propagate code through the pipeline, and ensure that the mass change persists through
-// the code.
-//
-//
+// Real-time TDDFT propagation driver. Muon mass fork (2026-07-06): once the RT
+// Hamiltonian is built below, it is opted into the per-state inverse mass via
+// ham.set_inverse_mass(electrons.inverse_mass()[0]), so an injected wavepacket
+// orbital propagates with kinetic operator -1/(2 m_mu). See the call-chain note
+// in hamiltonian/ks_hamiltonian.hpp. No-op for ordinary (all m_e = 1) electron runs.
 
 #include <systems/ions.hpp>
 #include <hamiltonian/self_consistency.hpp>

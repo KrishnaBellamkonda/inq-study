@@ -42,15 +42,6 @@
 //   used everywhere else stays bit-for-bit identical. Only three functions are
 //   on the muon path: laplacian_add, laplacian, laplacian_expectation_value.
 //   (laplacian_in_place below is NOT used by ks_hamiltonian — leave it alone.)
-//
-// MY THOUGHTS:
-// 	 This is the file where the actual mass revision is applied. Here, the laplacian
-//   is used to calculate the kinteic energy. So the laplacian operator is applied here using emplace if I right. So, we apply it here.
-//   If my understanding is right, we need to make a inverse_mass array and multiply each of the states
-//   ist here by the inverse mass before the Laplcaian is applied. I don't quite understand what other
-//   changes are made here. I think most of them are about adding a pre-factor, but I don't understand
-//   what specific purpose this satisfies. 
-//
 // ============================================================================
 
 namespace inq {

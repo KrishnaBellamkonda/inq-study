@@ -31,13 +31,11 @@
 //       electrons.inverse_mass()[0][wp_idx] = 1.0 / M_MU;   // M_MU = 206.77
 //   Nothing else in the user workflow changes; classical-muon runs never touch
 //   this. See docs/campaigns/muon_projectile/inq_study_engine_notes.md.
-// 
-// MY THOUGHTS:  
-// If I understand this correctly, this file holds the tempalte for the electrons class.
-// It contains all of the default values required for the electrons properties, such as occupation
-//  number, spin etc. I wonder if this is for the total system electrons, or just individual orbtials. 
-// I think the way this works is that we define the total systems bulk electron properties, and the individual
-// orbtials get assigned on their own. Each orbital is planed in a electrons[kpin][local_state_index].
+//
+// NOTE: `electrons` owns the bulk KS-state data (occupations, eigenvalues, and
+//   now inverse mass) as [kpin][local_state] arrays; a single orbital's value
+//   lives at electrons[kpin][local_state_index]. inverse_mass_ mirrors that
+//   layout (and lifetime/partition) exactly, which is why it is the natural home.
 // ============================================================================
 
 #include <stdexcept>
